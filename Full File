@@ -1,0 +1,360 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+
+using namespace std;
+
+struct Venue {
+    int id;
+    string name;
+    int capacity;
+    bool isAvailable;
+    string location;
+    double price;
+};
+
+class VenueData {
+public:
+    string name;
+    string location;
+    double price;
+
+    VenueData(string n, string loc, double p) : name(n), location(loc), price(p) {}
+
+    string toString() const {
+        return name + "," + location + "," + formatPrice(price);
+    }
+
+private:
+    string formatPrice(double price) const {
+        string result;
+        bool isNegative = price < 0;
+        if (isNegative) price = -price;
+
+        int integerPart = static_cast<int>(price);
+        double fractionalPart = price - integerPart;
+
+        do {
+            result = char((integerPart % 10) + '0') + result;
+            integerPart /= 10;
+        } while (integerPart > 0);
+
+        if (isNegative) result = "-" + result;
+
+        if (fractionalPart > 0) {
+            result += ".";
+            fractionalPart *= 10;
+            int count = 0; // limit decimal to avoid infinite loop
+            while (fractionalPart > 0.001 && count < 5) {
+                int digit = static_cast<int>(fractionalPart);
+                result += char(digit + '0');
+                fractionalPart -= digit;
+                fractionalPart *= 10;
+                count++;
+            }
+        }
+
+        return result;
+    }
+};
+
+class Customer {
+public:
+    string name;
+    string contact;
+
+    Customer(string n, string c) : name(n), contact(c) {}
+
+    string toString() const {
+        return name + "," + contact;
+    }
+};
+
+class Booking {
+public:
+    string customerName;
+    string venueName;
+    string date;
+
+    Booking(string cName, string vName, string d)
+        : customerName(cName), venueName(vName), date(d) {}
+
+    string toString() const {
+        return customerName + "," + venueName + "," + date;
+    }
+};
+
+class VenueRentalSystem {
+public:
+    void saveVenue(const VenueData& venue) {
+        ofstream outFile("Venues.txt", ios::app);
+        if (outFile.is_open()) {
+            outFile << venue.toString() << "\n";
+            outFile.close();
+        }
+    }
+
+    void loadVenues() {
+        ifstream inFile("Venues.txt");
+        if (inFile.is_open()) {
+            string line;
+            cout << "\nLoaded Venues:\n";
+            while (getline(inFile, line)) {
+                size_t pos1 = line.find(',');
+                size_t pos2 = line.find(',', pos1 + 1);
+                string name = line.substr(0, pos1);
+                string location = line.substr(pos1 + 1, pos2 - pos1 - 1);
+                double price = parsePrice(line.substr(pos2 + 1));
+                cout << "Name: " << name << ", Location: " << location << ", Price: " << price << endl;
+            }
+            inFile.close();
+        }
+    }
+
+    void saveCustomer(const Customer& customer) {
+        ofstream outFile("Customers.txt", ios::app);
+        if (outFile.is_open()) {
+            outFile << customer.toString() << "\n";
+            outFile.close();
+        }
+    }
+
+    void loadCustomers() {
+        ifstream inFile("Customers.txt");
+        if (inFile.is_open()) {
+            string line;
+            cout << "\nLoaded Customers:\n";
+            while (getline(inFile, line)) {
+                size_t pos = line.find(',');
+                string name = line.substr(0, pos);
+                string contact = line.substr(pos + 1);
+                cout << "Name: " << name << ", Contact: " << contact << endl;
+            }
+            inFile.close();
+        }
+    }
+
+    void saveBooking(const Booking& booking) {
+        ofstream outFile("Bookings.txt", ios::app);
+        if (outFile.is_open()) {
+            outFile << booking.toString() << "\n";
+            outFile.close();
+        }
+    }
+
+    void loadBookings() {
+        ifstream inFile("Bookings.txt");
+        if (inFile.is_open()) {
+            string line;
+            cout << "\nLoaded Bookings:\n";
+            while (getline(inFile, line)) {
+                size_t pos1 = line.find(',');
+                size_t pos2 = line.find(',', pos1 + 1);
+                string customerName = line.substr(0, pos1);
+                string venueName = line.substr(pos1 + 1, pos2 - pos1 - 1);
+                string date = line.substr(pos2 + 1);
+                cout << "Customer: " << customerName << ", Venue: " << venueName << ", Date: " << date << endl;
+            }
+            inFile.close();
+        }
+    }
+
+private:
+    double parsePrice(const string& priceStr) const {
+        double result = 0.0;
+        bool isNegative = false;
+        size_t i = 0;
+
+        if (priceStr[i] == '-') {
+            isNegative = true;
+            i++;
+        }
+
+        while (i < priceStr.length() && priceStr[i] != '.') {
+            result = result * 10 + (priceStr[i] - '0');
+            i++;
+        }
+
+        if (i < priceStr.length() && priceStr[i] == '.') {
+            i++;
+            double decimalPlace = 0.1;
+            while (i < priceStr.length()) {
+                result += (priceStr[i] - '0') * decimalPlace;
+                decimalPlace *= 0.1;
+                i++;
+            }
+        }
+
+        return isNegative ? -result : result;
+    }
+};
+
+void addVenue(vector<Venue*>& venues, VenueRentalSystem& system) {
+    Venue* v = new Venue;
+    cout << "Enter Venue ID: ";
+    cin >> v->id;
+    cin.ignore();
+    cout << "Enter Venue Name: ";
+    getline(cin, v->name);
+    cout << "Enter Location: ";
+    getline(cin, v->location);
+    cout << "Enter Price: ";
+    cin >> v->price;
+    cout << "Enter Capacity: ";
+    cin >> v->capacity;
+    cout << "Is it available? (1 = Yes, 0 = No): ";
+    cin >> v->isAvailable;
+    cin.ignore();
+
+    venues.push_back(v);
+    cout << "Venue added!\n";
+
+    system.saveVenue(VenueData(v->name, v->location, v->price));
+}
+
+void showVenues(vector<Venue*>& venues) {
+    if (venues.empty()) {
+        cout << "No venues found.\n";
+        return;
+    }
+
+    cout << "\n--- Venue List ---\n";
+    for (size_t i = 0; i < venues.size(); ++i) {
+        Venue* v = venues[i];
+        cout << "ID: " << v->id
+             << " | Name: " << v->name
+      	     << " | Location: " << v->location
+             << " | Price: " << v->price
+             << " | Capacity: " << v->capacity
+             << " | Available: " << (v->isAvailable ? "Yes" : "No") << "\n";
+
+    }
+}
+
+void updateVenue(vector<Venue*>& venues) {
+    int id;
+    cout << "Enter Venue ID to update: ";
+    cin >> id;
+
+    for (size_t i = 0; i < venues.size(); ++i) {
+        Venue* v = venues[i];
+        if (v->id == id) {
+            cin.ignore();
+            cout << "Enter new name: ";
+            getline(cin, v->name);
+            cout << "Enter new location: ";
+            getline(cin, v->location);
+            cout << "Enter new price: ";
+            cin >> v->price;
+            cout << "Enter new capacity: ";
+            cin >> v->capacity;
+            cout << "Is it available? (1 = Yes, 0 = No): ";
+            cin >> v->isAvailable;
+            cin.ignore();
+
+
+            cout << "Venue updated!\n";
+            return;
+        }
+    }
+
+    cout << "Venue not found.\n";
+}
+
+void deleteVenue(vector<Venue*>& venues) {
+    int id;
+    cout << "Enter Venue ID to delete: ";
+    cin >> id;
+
+    for (int i = 0; i < venues.size(); ++i) {
+        if (venues[i]->id == id) {
+            delete venues[i];
+            venues.erase(venues.begin() + i);
+            cout << "Venue deleted!\n";
+            return;
+        }
+    }
+    cout << "Venue not found.\n";
+}
+
+// ----------- Main Program -----------
+int main() {
+    vector<Venue*> venues;
+    VenueRentalSystem system;
+    int choice;
+
+    do {
+        cout << "\n--- Venue Management System ---\n";
+        cout << "1. Add Venue\n";
+        cout << "2. Show Venues\n";
+        cout << "3. Update Venue\n";
+        cout << "4. Delete Venue\n";
+        cout << "5. Add Customer\n";
+        cout << "6. Make Booking\n";
+        cout << "7. Load Customers\n";
+        cout << "8. Load Venues\n";
+        cout << "9. Load Bookings\n";
+        cout << "10. Exit\n\n";
+        cout << "Choose: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+            case 1: 
+                addVenue(venues, system); 
+                break;
+            case 2: 
+                showVenues(venues); 
+                break;
+            case 3: 
+                updateVenue(venues); 
+                break;
+            case 4: 
+                deleteVenue(venues); 
+                break;
+            case 5: {
+                string name, contact;
+                cout << "Enter customer name: ";
+                getline(cin, name);
+                cout << "Enter contact: ";
+                getline(cin, contact);
+                system.saveCustomer(Customer(name, contact));
+                break;
+            }
+            case 6: {
+                string cname, vname, date;
+                cout << "Enter customer name: ";
+                getline(cin, cname);
+                cout << "Enter venue name: ";
+                getline(cin, vname);
+                cout << "Enter date (YYYY-MM-DD): ";
+                getline(cin, date);
+                system.saveBooking(Booking(cname, vname, date));
+                break;
+            }
+            case 7: 
+                system.loadCustomers(); 
+                break;
+            case 8: 
+                system.loadVenues(); 
+                break;
+            case 9: 
+                system.loadBookings(); 
+                break;
+            case 10: 
+                cout << "Exiting...\n"; 
+                break;
+            default: 
+                cout << "Invalid choice.\n";
+        }
+
+    } while (choice != 11);
+
+    for (size_t i = 0; i < venues.size(); ++i) {
+        delete venues[i];
+    }
+
+    return 0;
+}
+
